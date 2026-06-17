@@ -1,72 +1,82 @@
 # okf-frontmatter
 
-A [Claude Code](https://claude.com/claude-code) **skill** for maintaining a repo's docs under
-the [Open Knowledge Format (OKF)](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/)
-— and for finding the *authoritative* doc/schema fast, instead of grepping through thousands
-of lines of prose.
+I let my coding agents maintain the docs — wikis, design notes, postmortems. That's lovely for
+the docs and rough on the agent: a repo slowly grows to dozens, sometimes hundreds, of markdown
+files, and every "where's the doc about X?" turns into grepping thousands of lines and a few
+rounds of `find`. Slow, and a quiet token sink. I looked at standing up RAG for it and it felt
+like a cannon to swat a fly. 🦟
 
-Two jobs:
+Then a colleague pointed me at Google's
+[Open Knowledge Format (OKF)](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/):
+give each doc a small structured frontmatter block as its single source of truth, and link the
+code-ish details to the code instead of copying them into prose. The thing that clicked for me
+was that the same frontmatter makes a great *index* — so I built this.
 
-1. **Maintain docs the OKF way.** Every doc carries a small YAML frontmatter block as the
-   single source of truth (`type`, `title`, `tags`, `intent`, `schema_source`, `documents`).
-   Schema detail *links to the code* (`schema_source: file.py:Symbol`) instead of being copied
-   into prose — so docs stop drifting and stop ballooning to thousand-line markdown.
-2. **Look docs up fast** (`find_docs.py`). Given a code symbol, an API endpoint, a config key,
-   or a keyword, it ranks the doc that *owns* the topic by frontmatter intent — and can resolve
-   a doc's `schema_source` straight to the code, skipping the prose entirely.
+**okf-frontmatter** is a portable agent skill: just a `SKILL.md` plus a small script, so any
+agent that loads skills can pick it up (or you can run it as a plain CLI). It does two things.
 
-The lookup is deliberately **grep-first**: the script is the *fallback* for when grep is
-ambiguous, not a replacement for it (see [the strategy](references/lookup-strategy.md)).
+**Keeps docs in OKF shape.** Each doc opens with a little YAML frontmatter — `type`, `title`,
+`tags`, `intent`, `schema_source`, `documents`. The parts that *are* code — models, config
+keys, endpoints — get a `schema_source: file.py:Symbol` pointer instead of being retyped into
+prose. So docs stop drifting from the code and stop ballooning into thousand-line walls.
 
----
+**Finds the right doc fast.** Hand `find_docs.py` a symbol, an endpoint, a config key, or just
+a keyword, and it ranks the doc that actually *owns* the topic (by frontmatter intent). `schema
+<doc>` goes one step further and resolves those pointers straight to the code, so the agent
+reads the authoritative definition without opening the prose at all.
 
-## Does it actually help? (clean-room benchmark)
+One thing I want to be straight about: this is **grep-first**. The script isn't a replacement
+for grep — it's what you reach for when grep is ambiguous (hits scattered across files, a
+synonym mismatch, or nothing at all). On a clean literal hit, plain grep is already the best
+move, and the skill tells the agent exactly that. The
+[full strategy is here](references/lookup-strategy.md).
 
-The honest answer: **yes for structured/ambiguous lookups, neutral for clean keyword hits.**
-We measured it instead of guessing.
+## Does it actually help? I measured it.
 
-**Method.** 8 fresh subagents with **no shared context**, same model (Claude Sonnet 4.6),
-read-only, each pinned to one repo checkout. Identical questions asked against two states of
-the [openInvest](https://github.com/longsizhuo/openInvest) repo:
+Short version: **yes for structured or ambiguous lookups, a wash for clean keyword hits** — and
+I'd rather show you the wash than bury it.
 
-- **baseline** — `main` checkout: monolithic prose docs, no frontmatter, no skill (grep + read only).
-- **current** — same docs with OKF frontmatter added + this skill available.
+The setup: 8 fresh agents, no shared context, the same LLM on both sides (Claude Sonnet 4.6),
+read-only, each pinned to one checkout of [openInvest](https://github.com/longsizhuo/openInvest).
+Same questions, two states of the repo:
 
-Both conditions reached the **same, correct answer** every time — so this is "same answer,
-who's cheaper," not a quality trade-off. Metrics are each subagent's reported tool-call count,
-tokens, and wall-clock.
+- **baseline** — plain `main`: monolithic docs, no frontmatter, no skill. grep + read only.
+- **current** — the same docs with OKF frontmatter, skill available.
+
+Both sides reached the **same correct answer every time**, so this is "same answer, who's
+cheaper," not a quality trade-off. The numbers are each agent's own tool-call count, tokens, and
+wall-clock.
 
 | Task | tool calls | wall-clock | tokens | what happened |
 |---|---|---|---|---|
 | **T1** — "fields of the `GET /api/holdings` response + authoritative definition" | **7 → 3** (−57%) | 26.1s → 19.0s (−27%) | 24.9k → 23.8k (−5%) | OKF's sweet spot: `find` → `schema` jumps straight to `HoldingsListResponse` in code. |
 | **T2** — "which config keys are settable at runtime via the API?" | **7 → 6** (−14%) | 27.0s → 23.5s (−13%) | **40.0k → 29.6k (−26%)** | `schema` prints the `API_SETTABLE` whitelist directly → much less reading. |
-| **T3** — "why was the Claude Agent SDK not adopted?" | **2 → 2** (0%) | 23.2s → 21.0s (−9%) | 31.8k → 24.1k (−24%) | **The boundary, shown honestly:** `Agent SDK` is a clean keyword — grep nails ADR-002 in one shot, so the script can't cut calls. |
+| **T3** — "why was the Claude Agent SDK not adopted?" | **2 → 2** (0%) | 23.2s → 21.0s (−9%) | 31.8k → 24.1k (−24%) | The honest boundary: `Agent SDK` is a clean keyword, so grep nails the ADR in one shot and the script can't save a call. |
 
-**Read-out:**
+How I read it:
 
-- **Tool calls** is the robust signal (independent of run-to-run variance and parallelism).
-  Structured queries (T1/T2) drop calls; a clean keyword hit (T3) ties — because grep is
-  *already* optimal there, and the skill says so: use grep first.
-- **Token savings** come mainly from `schema` resolving a pointer to the exact code definition,
-  so the agent never reads the big prose doc. (Note: these docs are still monolithic — frontmatter
-  alone doesn't shrink reads; splitting docs into per-topic files is a separate, larger lever.)
-- **Wall-clock** is shown for completeness but is the noisiest metric (agents ran concurrently).
+- **Tool calls** is the number I trust most — it doesn't wobble with run-to-run variance.
+  Structured queries shed calls; the clean keyword hit ties, exactly because grep already wins
+  there.
+- **Tokens** mostly drop when `schema` resolves a pointer to the code and the agent skips the
+  big prose doc. (These docs are still monolithic, so frontmatter alone doesn't shrink a read —
+  splitting docs into per-topic files is a separate, bigger lever I haven't pulled here.)
+- **Wall-clock** is here for completeness; it's the noisiest row, since the agents ran in
+  parallel.
 
-> The takeaway isn't "the script is always faster." On an easy literal query, calling the script
-> is pure overhead. The win is that on *ambiguous* queries it roughly halves the calls — and you
-> only get that by **not** reaching for it on the easy ones.
-
----
+> The point was never "the script is always faster." On an easy query, calling it is pure
+> overhead. The win is that on the *ambiguous* ones it roughly halves the calls — and you only
+> get that by not reaching for it on the easy ones.
 
 ## Quickstart
 
-No dependencies — pure Python stdlib (uses PyYAML automatically if present, otherwise a built-in
-minimal frontmatter parser).
+No dependencies — pure Python stdlib. It'll use PyYAML if you happen to have it, otherwise a
+tiny built-in frontmatter parser kicks in.
 
 ```bash
 git clone https://github.com/longsizhuo/okf-frontmatter.git
 
-# run from inside the repo you want to query (auto-detects docs/wiki), or pass --repo:
+# run from inside the repo you want to query (it auto-detects docs/wiki), or pass --repo:
 python3 okf-frontmatter/scripts/find_docs.py --repo /path/to/your/repo lint
 
 # locate the doc that owns a symbol / endpoint / config key
@@ -84,16 +94,18 @@ python3 okf-frontmatter/scripts/find_docs.py --repo /path/to/your/repo lint
 ./scripts/run.sh lint --ci
 ```
 
-### As a Claude Code skill
-Symlink (or copy) this repo into your skills dir so the agent auto-loads `SKILL.md`:
+### Use it as an agent skill
+
+It's a standard `SKILL.md`, so any agent that loads skills can use it — Claude Code, Cursor,
+Cline, Codex, Gemini CLI, OpenClaw, and the rest. Drop it into your agent's skills directory:
 
 ```bash
-ln -s "$(pwd)/okf-frontmatter" ~/.claude/skills/okf-frontmatter
+ln -s "$(pwd)/okf-frontmatter" ~/.claude/skills/okf-frontmatter   # or wherever your agent looks
 ```
 
-The agent then follows the grep-first / script-fallback strategy described in `SKILL.md`.
-
----
+Once it's loaded, the agent follows the grep-first / script-fallback flow from `SKILL.md`. Don't
+use a skill runner? Just call `scripts/run.sh` (or `find_docs.py`) from anywhere — it's the same
+tool.
 
 ## Commands
 
@@ -122,13 +134,13 @@ documents:                # concrete handles a reader searches for
 ---
 ```
 
-ADRs add a lifecycle block (`status`, `date`, `supersedes`, `superseded_by`). Full details:
-[`references/conventions.md`](references/conventions.md). What OKF is:
-[`references/okf-spec.md`](references/okf-spec.md).
+ADRs add a lifecycle block (`status`, `date`, `supersedes`, `superseded_by`). The full schema +
+rules live in [`references/conventions.md`](references/conventions.md); a one-page take on what
+OKF is in [`references/okf-spec.md`](references/okf-spec.md).
 
 ## Layout
 ```
-SKILL.md                       agent-facing guide (the two jobs + the lookup decision tree)
+SKILL.md                       the skill itself (the two jobs + the lookup decision tree)
 scripts/find_docs.py           stdlib engine: index | find | schema | lint | new
 scripts/run.sh                 thin wrapper
 references/okf-spec.md          what OKF is (1 page)
