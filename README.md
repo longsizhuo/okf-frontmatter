@@ -125,11 +125,11 @@ Both sides reached the **same correct answer every time**, so this is "same answ
 cheaper," not a quality trade-off. The numbers are each agent's own tool-call count, tokens, and
 wall-clock.
 
-| Task | tool calls | wall-clock | tokens | what happened |
-|---|---|---|---|---|
-| **T1** — "fields of the `GET /api/holdings` response + authoritative definition" | **7 → 3** (−57%) | 26.1s → 19.0s (−27%) | 24.9k → 23.8k (−5%) | OKF's sweet spot: `find` → `schema` jumps straight to `HoldingsListResponse` in code. |
-| **T2** — "which config keys are settable at runtime via the API?" | **7 → 6** (−14%) | 27.0s → 23.5s (−13%) | **40.0k → 29.6k (−26%)** | `schema` prints the `API_SETTABLE` whitelist directly → much less reading. |
-| **T3** — "why was the Claude Agent SDK not adopted?" | **2 → 2** (0%) | 23.2s → 21.0s (−9%) | 31.8k → 24.1k (−24%) | The honest boundary: `Agent SDK` is a clean keyword, so grep nails the ADR in one shot and the script can't save a call. |
+| Task                                                                             | tool calls       | wall-clock           | tokens                   | what happened                                                                                                            |
+| -------------------------------------------------------------------------------- | ---------------- | -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **T1** — "fields of the `GET /api/holdings` response + authoritative definition" | **7 → 3** (−57%) | 26.1s → 19.0s (−27%) | 24.9k → 23.8k (−5%)      | OKF's sweet spot: `find` → `schema` jumps straight to `HoldingsListResponse` in code.                                    |
+| **T2** — "which config keys are settable at runtime via the API?"                | **7 → 6** (−14%) | 27.0s → 23.5s (−13%) | **40.0k → 29.6k (−26%)** | `schema` prints the `API_SETTABLE` whitelist directly → much less reading.                                               |
+| **T3** — "why was the Claude Agent SDK not adopted?"                             | **2 → 2** (0%)   | 23.2s → 21.0s (−9%)  | 31.8k → 24.1k (−24%)     | The honest boundary: `Agent SDK` is a clean keyword, so grep nails the ADR in one shot and the script can't save a call. |
 
 How I read it:
 
@@ -173,13 +173,13 @@ python3 okf-frontmatter/scripts/find_docs.py --repo /path/to/your/repo lint
 
 ## Commands
 
-| command | what it does |
-|---|---|
-| `find <query>` | symbol / `GET /api/x` / `a.b.config_key` / intent / keyword → ranked owning docs (JSON, strongest match first) |
-| `schema <doc>` | resolve a doc's `schema_source` and print the real code definitions (via `ast`) |
-| `index [--cache]` | dump the whole frontmatter index as JSON (`--cache` writes `docs/.okf-index.json`) |
-| `lint [--ci]` | OKF compliance + drift; `--ci` exits non-zero only on errors (un-migrated docs are info, never a failure) |
-| `new <type> <name>` | print a frontmatter skeleton |
+| command             | what it does                                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `find <query>`      | symbol / `GET /api/x` / `a.b.config_key` / intent / keyword → ranked owning docs (JSON, strongest match first) |
+| `schema <doc>`      | resolve a doc's `schema_source` and print the real code definitions (via `ast`)                                |
+| `index [--cache]`   | dump the whole frontmatter index as JSON (`--cache` writes `docs/.okf-index.json`)                             |
+| `lint [--ci]`       | OKF compliance + drift; `--ci` exits non-zero only on errors (un-migrated docs are info, never a failure)      |
+| `new <type> <name>` | print a frontmatter skeleton                                                                                   |
 
 ---
 

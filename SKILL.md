@@ -46,22 +46,22 @@ stop and add a `schema_source` pointer instead.
 
 Common to every doc:
 
-| field | required | meaning |
-|---|---|---|
-| `type` | ✅ | `wiki-chapter` \| `adr` \| `index` \| `reference` \| `report` \| `readme` |
-| `title` | rec. | human title (usually the H1) |
-| `tags` | opt. | `[api, rest, ...]` — coarse categories |
-| `intent` | opt. | one short phrase the lookup ranks on, e.g. `API Contract`, `决策参数`, `部署` |
-| `schema_source` | opt. | list of `relpath:Symbol` pointers to the authoritative code, e.g. `connectors/web_api/models.py:PortfolioResponse` |
-| `documents` | opt. | `{endpoints: [GET /api/x], config_keys: [a.b], symbols: [Foo]}` — concrete things this doc covers |
+| field           | required | meaning                                                                                                            |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `type`          | ✅       | `wiki-chapter` \| `adr` \| `index` \| `reference` \| `report` \| `readme`                                          |
+| `title`         | rec.     | human title (usually the H1)                                                                                       |
+| `tags`          | opt.     | `[api, rest, ...]` — coarse categories                                                                             |
+| `intent`        | opt.     | one short phrase the lookup ranks on, e.g. `API Contract`, `决策参数`, `部署`                                      |
+| `schema_source` | opt.     | list of `relpath:Symbol` pointers to the authoritative code, e.g. `connectors/web_api/models.py:PortfolioResponse` |
+| `documents`     | opt.     | `{endpoints: [GET /api/x], config_keys: [a.b], symbols: [Foo]}` — concrete things this doc covers                  |
 
 ADR-only (lifecycle):
 
-| field | meaning |
-|---|---|
-| `status` | `proposed` \| `accepted` \| `superseded` (normalizes the old `**状态**` line) |
-| `date` | decision date |
-| `supersedes` / `superseded_by` | ADR ids, e.g. `[010]` |
+| field                          | meaning                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| `status`                       | `proposed` \| `accepted` \| `superseded` (normalizes the old `**状态**` line) |
+| `date`                         | decision date                                                                 |
+| `supersedes` / `superseded_by` | ADR ids, e.g. `[010]`                                                         |
 
 Relationships between docs stay as ordinary markdown links in the body (that's the OKF
 knowledge graph). `supersedes`/`superseded_by` are typed mirrors `lint` cross-checks.
@@ -99,19 +99,21 @@ frontmatter *owns* the symbol/endpoint/config-key first, even when the literal k
 buried. Full decision tree + the benchmark behind it: `references/lookup-strategy.md`.
 
 ### Commands
-| command | use |
-|---|---|
-| `run.sh find <query>` | symbol (`PortfolioResponse`), endpoint (`GET /api/holdings`), config key (`verdict.risk_profile`), intent/tag, or keyword → ranked owning docs (JSON, strongest match first) |
-| `run.sh schema <doc>` | resolve a doc's `schema_source` and print the real code definitions — read the authoritative schema without opening the prose |
-| `run.sh index [--cache]` | dump the whole frontmatter index as JSON (`--cache` writes `docs/.okf-index.json`) |
-| `run.sh lint [--ci]` | OKF compliance + drift; `--ci` exits non-zero only on errors (un-migrated docs are info, never a failure) |
-| `run.sh new <type> <name>` | print a frontmatter skeleton |
+
+| command                    | use                                                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run.sh find <query>`      | symbol (`PortfolioResponse`), endpoint (`GET /api/holdings`), config key (`verdict.risk_profile`), intent/tag, or keyword → ranked owning docs (JSON, strongest match first) |
+| `run.sh schema <doc>`      | resolve a doc's `schema_source` and print the real code definitions — read the authoritative schema without opening the prose                                                |
+| `run.sh index [--cache]`   | dump the whole frontmatter index as JSON (`--cache` writes `docs/.okf-index.json`)                                                                                           |
+| `run.sh lint [--ci]`       | OKF compliance + drift; `--ci` exits non-zero only on errors (un-migrated docs are info, never a failure)                                                                    |
+| `run.sh new <type> <name>` | print a frontmatter skeleton                                                                                                                                                 |
 
 ---
 
 ## References
-| file | when to read |
-|---|---|
-| `references/okf-spec.md` | what the Open Knowledge Format is (the 1-page version) |
-| `references/conventions.md` | this repo's frontmatter schema + maintenance rules |
+
+| file                            | when to read                                               |
+| ------------------------------- | ---------------------------------------------------------- |
+| `references/okf-spec.md`        | what the Open Knowledge Format is (the 1-page version)     |
+| `references/conventions.md`     | this repo's frontmatter schema + maintenance rules         |
 | `references/lookup-strategy.md` | the grep-first / script-fallback decision tree + benchmark |

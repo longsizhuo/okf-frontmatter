@@ -31,9 +31,9 @@ tags: [sales, revenue]
 ---
 # Schema
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `order_id` | STRING | Globally unique order id. |
+| Column        | Type   | Description                              |
+| ------------- | ------ | ---------------------------------------- |
+| `order_id`    | STRING | Globally unique order id.                |
 | `customer_id` | STRING | FK to [customers](/tables/customers.md). |
 ```
 

@@ -27,9 +27,9 @@ Need to find the doc/answer for some term?
 
 The benchmark that motivated this skill:
 
-| scenario | grep alone | find_docs.py |
-|---|---|---|
-| **literal keyword, one clear owner** | optimal | *worse* — adds one Bash call (~+4s). |
+| scenario                               | grep alone                                                | find_docs.py                               |
+| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------ |
+| **literal keyword, one clear owner**   | optimal                                                   | *worse* — adds one Bash call (~+4s).       |
 | **keyword scattered across big files** | 6 calls / ~29s (ls + multiple greps + read §3 to confirm) | 3 calls / ~18s (ranks the right doc first) |
 
 So the win is **not** "the script is faster." On easy queries grep already wins, and the
