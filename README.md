@@ -1,16 +1,34 @@
+<div align="center">
+
 # okf-frontmatter
 
-I let my coding agents maintain the docs — wikis, design notes, postmortems. That's lovely for
-the docs and rough on the agent: a repo slowly grows to dozens, sometimes hundreds, of markdown
-files, and every "where's the doc about X?" turns into grepping thousands of lines and a few
-rounds of `find`. Slow, and a quiet token sink. I looked at standing up RAG for it and it felt
-like a cannon to swat a fly. 🦟
+**Keep a repo's Markdown docs under the Open Knowledge Format — and find the right doc/schema fast.**
 
-Then a colleague pointed me at Google's
-[Open Knowledge Format (OKF)](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/):
-give each doc a small structured frontmatter block as its single source of truth, and link the
-code-ish details to the code instead of copying them into prose. The thing that clicked for me
-was that the same frontmatter makes a great *index* — so I built this.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+&nbsp;·&nbsp; pure-Python stdlib &nbsp;·&nbsp; portable agent skill — Claude Code / Codex / any
+
+</div>
+
+---
+
+## Table of contents
+
+- [What it is](#what-it-is)
+- [Install](#install)
+  - [Claude Code](#claude-code)
+  - [Codex](#codex)
+  - [Any other agent](#any-other-agent)
+- [Background](#background)
+- [Does it actually help? I measured it.](#does-it-actually-help-i-measured-it)
+- [CLI usage](#cli-usage)
+- [Commands](#commands)
+- [Frontmatter schema](#frontmatter-schema)
+- [Layout](#layout)
+- [License](#license)
+
+---
+
+## What it is
 
 **okf-frontmatter** is a portable agent skill: just a `SKILL.md` plus a small script, so any
 agent that loads skills can pick it up (or you can run it as a plain CLI). It does two things.
@@ -30,6 +48,66 @@ for grep — it's what you reach for when grep is ambiguous (hits scattered acro
 synonym mismatch, or nothing at all). On a clean literal hit, plain grep is already the best
 move, and the skill tells the agent exactly that. The
 [full strategy is here](references/lookup-strategy.md).
+
+---
+
+## Install
+
+No dependencies — pure Python stdlib. It'll use PyYAML if you happen to have it, otherwise a
+tiny built-in frontmatter parser kicks in. Pick the install that matches your agent.
+
+### Claude Code
+
+The repo ships a `.claude-plugin/plugin.json` manifest, so it loads as a first-class plugin (not
+just a loose skill). Clone into the skills dir; it auto-loads next session as
+`okf-frontmatter@skills-dir`:
+
+```bash
+git clone https://github.com/longsizhuo/okf-frontmatter.git ~/.claude/skills/okf-frontmatter
+# then in a session: /reload-plugins   (or restart Claude Code)
+```
+
+### Codex
+
+Codex skills are plain folders under `$CODEX_HOME/skills/`; the same `SKILL.md` works as-is
+(no manifest needed, Codex ignores `.claude-plugin/`):
+
+```bash
+git clone https://github.com/longsizhuo/okf-frontmatter.git ~/.codex/skills/okf-frontmatter
+# picked up on the next Codex session
+```
+
+### Any other agent
+
+Works on Cursor, Cline, Gemini CLI, OpenClaw, and the rest — drop it wherever that agent looks
+for skills, or just clone it anywhere and call the script directly:
+
+```bash
+git clone https://github.com/longsizhuo/okf-frontmatter.git
+ln -s "$(pwd)/okf-frontmatter" ~/.claude/skills/okf-frontmatter   # or wherever your agent looks
+```
+
+Once it's loaded, the agent follows the grep-first / script-fallback flow from `SKILL.md`. Don't
+use a skill runner? Just call `scripts/run.sh` (or `find_docs.py`) from anywhere — it's the same
+tool. See [CLI usage](#cli-usage) below.
+
+---
+
+## Background
+
+I let my coding agents maintain the docs — wikis, design notes, postmortems. That's lovely for
+the docs and rough on the agent: a repo slowly grows to dozens, sometimes hundreds, of markdown
+files, and every "where's the doc about X?" turns into grepping thousands of lines and a few
+rounds of `find`. Slow, and a quiet token sink. I looked at standing up RAG for it and it felt
+like a cannon to swat a fly. 🦟
+
+Then a colleague pointed me at Google's
+[Open Knowledge Format (OKF)](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/):
+give each doc a small structured frontmatter block as its single source of truth, and link the
+code-ish details to the code instead of copying them into prose. The thing that clicked for me
+was that the same frontmatter makes a great *index* — so I built this.
+
+---
 
 ## Does it actually help? I measured it.
 
@@ -68,14 +146,11 @@ How I read it:
 > overhead. The win is that on the *ambiguous* ones it roughly halves the calls — and you only
 > get that by not reaching for it on the easy ones.
 
-## Quickstart
+---
 
-No dependencies — pure Python stdlib. It'll use PyYAML if you happen to have it, otherwise a
-tiny built-in frontmatter parser kicks in.
+## CLI usage
 
 ```bash
-git clone https://github.com/longsizhuo/okf-frontmatter.git
-
 # run from inside the repo you want to query (it auto-detects docs/wiki), or pass --repo:
 python3 okf-frontmatter/scripts/find_docs.py --repo /path/to/your/repo lint
 
@@ -94,38 +169,7 @@ python3 okf-frontmatter/scripts/find_docs.py --repo /path/to/your/repo lint
 ./scripts/run.sh lint --ci
 ```
 
-### Use it as an agent skill
-
-It's a standard `SKILL.md`, so any agent that loads skills can use it — Claude Code, Cursor,
-Cline, Codex, Gemini CLI, OpenClaw, and the rest. The repo also ships a
-`.claude-plugin/plugin.json` manifest, so on Claude Code it loads as a first-class plugin (not
-just a loose skill). Pick the install that matches your agent:
-
-**Claude Code (as a skills-directory plugin)** — clone into the skills dir; the bundled manifest
-makes it a plugin that auto-loads next session as `okf-frontmatter@skills-dir`:
-
-```bash
-git clone https://github.com/longsizhuo/okf-frontmatter.git ~/.claude/skills/okf-frontmatter
-# then in a session: /reload-plugins   (or restart Claude Code)
-```
-
-**Codex (as a local skill)** — Codex skills are plain folders under `$CODEX_HOME/skills/`; the
-same `SKILL.md` works as-is (no manifest needed, Codex ignores `.claude-plugin/`):
-
-```bash
-git clone https://github.com/longsizhuo/okf-frontmatter.git ~/.codex/skills/okf-frontmatter
-# picked up on the next Codex session
-```
-
-**Any other agent** — drop it wherever that agent looks for skills:
-
-```bash
-ln -s "$(pwd)/okf-frontmatter" ~/.claude/skills/okf-frontmatter   # or wherever your agent looks
-```
-
-Once it's loaded, the agent follows the grep-first / script-fallback flow from `SKILL.md`. Don't
-use a skill runner? Just call `scripts/run.sh` (or `find_docs.py`) from anywhere — it's the same
-tool.
+---
 
 ## Commands
 
@@ -136,6 +180,8 @@ tool.
 | `index [--cache]` | dump the whole frontmatter index as JSON (`--cache` writes `docs/.okf-index.json`) |
 | `lint [--ci]` | OKF compliance + drift; `--ci` exits non-zero only on errors (un-migrated docs are info, never a failure) |
 | `new <type> <name>` | print a frontmatter skeleton |
+
+---
 
 ## Frontmatter schema
 
@@ -158,7 +204,10 @@ ADRs add a lifecycle block (`status`, `date`, `supersedes`, `superseded_by`). Th
 rules live in [`references/conventions.md`](references/conventions.md); a one-page take on what
 OKF is in [`references/okf-spec.md`](references/okf-spec.md).
 
+---
+
 ## Layout
+
 ```
 .claude-plugin/plugin.json     Claude Code plugin manifest (lets it load as a plugin, not just a skill)
 SKILL.md                       the skill itself (the two jobs + the lookup decision tree)
@@ -169,5 +218,8 @@ references/conventions.md       the frontmatter schema + maintenance rules
 references/lookup-strategy.md   grep-first / script-fallback decision tree + this benchmark
 ```
 
+---
+
 ## License
+
 MIT — see [LICENSE](LICENSE).
