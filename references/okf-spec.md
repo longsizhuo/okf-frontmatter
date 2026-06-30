@@ -30,6 +30,7 @@ description: One row per completed customer order.
 tags: [sales, revenue]
 ---
 # Schema
+
 | Column | Type | Description |
 |--------|------|-------------|
 | `order_id` | STRING | Globally unique order id. |
